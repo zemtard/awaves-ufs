@@ -27,8 +27,18 @@ wss.on("connection", (ws, req) => {
   // sending message
   ws.on("message", data => { //create endpoints here?
       console.log(`Client has sent us: ${data}`)
+  // if massage contains yo save feedback
       if(data.includes("yo")){
-        console.log("stupid user 💀")
+
+        console.log("stupid user 💀 added feedback")
+
+        const feedback = new Feedback({
+          song: 'song2',
+          rating: "like"
+        })
+
+        feedback.save()
+        
       }
   });
   // handling what to do when clients disconnects from server
