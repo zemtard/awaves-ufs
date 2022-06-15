@@ -1,7 +1,10 @@
-
+const WebSocket = require('ws');
 const express = require('express')
 const app = express()
 const port = 3000
+const server = require('http').createServer(app)
+const wss = new WebSocket.Server({server});
+
 const mongoose = require('mongoose')
 const Feedback = require('./models/feedback.js')
 
@@ -10,7 +13,7 @@ const uri = "mongodb+srv://zemtard:zzz1998@test.aohdt.mongodb.net/feedback?retry
 //CONNECTING DATABASE AND STARTING SERVER IF DATABASE CONNECTION IS SUCCESSful
 mongoose.connect(uri).then((result) => {
   console.log("DB CONNECTED")
-  app.listen(port, () => {
+  server.listen(port, () => {
     console.log(`APP LISTENING ON PORT: ${port}`)
   })
 }).catch((err) => {
@@ -18,8 +21,27 @@ mongoose.connect(uri).then((result) => {
   console.log(err)
 })
 
-//ENDPOINTS
+//WEBSOCKET HANDLING
+wss.on("connection", (ws, req) => {
+  console.log("new client connected 😎 : " + req.socket.remoteAddress); // user connects, display his ip
+  // sending message
+  ws.on("message", data => { //create endpoints here?
+      console.log(`Client has sent us: ${data}`)
+      if(data.includes("yo")){
+        console.log("stupid user 💀")
+      }
+  });
+  // handling what to do when clients disconnects from server
+  ws.on("close", () => {
+      console.log("the client has disconnected 🤮");
+  });
+  // handling client connection error
+  ws.onerror = function () {
+      console.log("Some Error occurred")
+  }
+});
 
+// HTTP ENDPOINTS
 app.get('/', (req, res) => {
   res.send('i will kill you')
   console.log("kill trigerred");
@@ -54,6 +76,3 @@ app.get('/get-all-review', async (req, res) => {
 //TODO CREATE CREATE ENDPOINTS
 //TODO CREATE UPDATE ENDPOINTS
 //TODO CREATE DELETE ENDPOINTS
-
-
-
