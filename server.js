@@ -4,7 +4,6 @@ const app = express()
 const port = 3000
 const server = require('http').createServer(app)
 const wss = new WebSocket.Server({server});
-
 const mongoose = require('mongoose')
 const Feedback = require('./models/feedback.js')
 
@@ -23,27 +22,44 @@ mongoose.connect(uri).then((result) => {
 
 //WEBSOCKET HANDLING
 wss.on("connection", (ws, req) => {
-  console.log("new client connected 😎 : " + req.socket.remoteAddress); // user connects, display his ip
+  session_start = new Date(); //getting users start time
+  console.log("new client connected 😎 : " + req.socket.remoteAddress + " | " + session_start); // user connects, display his ip
   // sending message
   ws.on("message", data => { //create endpoints here?
-      console.log(`Client has sent us: ${data}`)
-  // if massage contains yo save feedback
-      if(data.includes("yo")){
+      //console.log(`Client has sent us: ${data}`)
+      prettyData = JSON.parse(data)
+      console.log(prettyData)
 
-        console.log("stupid user 💀 added feedback")
-
-        const feedback = new Feedback({
-          song: 'song2',
-          rating: "like"
+      switch(prettyData.type){
+        case "song-rating" : //Feedback type song-rating
+        console.log("stupid user 💀 added feedback");
+          const feedback = new Feedback({
+          song: 'song NAME',
+          rating: prettyData.rating
         })
-
         feedback.save()
-        
+        break;
       }
+// if massage contains yo save feedback
+      // if(data.includes("yo")){
+
+      //   console.log("stupid user 💀 added feedback")
+
+      //   const feedback = new Feedback({
+      //     song: 'song2',
+      //     rating: "like"
+      //   })
+      //   feedback.save()
+      // }
+
   });
   // handling what to do when clients disconnects from server
   ws.on("close", () => {
-      console.log("the client has disconnected 🤮");
+      session_end = new Date(); //getting users end time
+      diff = new Date(session_end - session_start) //getting session length
+      console.log("the client has disconnected 🤮 " + req.socket.remoteAddress + " | " + session_end);
+      console.log(diff/60000 + " min")
+      console.log(diff/1000 + " sec")
   });
   // handling client connection error
   ws.onerror = function () {
