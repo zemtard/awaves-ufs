@@ -1,3 +1,9 @@
+//TODO DOCKERIZE THIS APP
+//TODO TEST APP try breaking
+//TODO GRAPHQL FOR AUTOMATIC ENDPOINTS
+//TODO SOME FILTERED DATA READINGS
+//TODO CYPRESS TESTING
+
 const WebSocket = require('ws');
 const express = require('express')
 const app = express()
@@ -25,6 +31,8 @@ mongoose.connect(uri).then((result) => {
 //WEBSOCKET HANDLING
 wss.on("connection", (ws, req) => {
 
+  user_data_flag = false;
+
   const involentary = new user_data({
     session_length: null,
     location: null,
@@ -43,7 +51,7 @@ wss.on("connection", (ws, req) => {
 
       switch(prettyData.collection){
         case 1 : 
-        console.log("stupid user 💀 added feedback for collection 1: ");
+        console.log("user 💀 added feedback for collection 1: ");
 
         const custom_data = new custom({
           label: prettyData.label,
@@ -55,19 +63,21 @@ wss.on("connection", (ws, req) => {
 
         break;
         case 2 : 
-        console.log("stupid user 💀 added feedback for collection 2: ");
+        console.log("user 💀 added feedback for collection 2: ");
 
         involentary.device = prettyData.device;
         involentary.browser = prettyData.browser;
         involentary.OS = prettyData.OS;
         involentary.version = prettyData.version;
+
+        user_data_flag = true;
+
         break;
       }
 
-
   });
   // handling what to do when clients disconnects from server
-  ws.on("close", () => {
+  ws.on("close",  () => {
       session_end = new Date(); //getting users end time
       diff = new Date(session_end - session_start) //getting session length
       console.log("the client has disconnected 🤮 " + req.socket.remoteAddress + " | " + session_end);
@@ -78,7 +88,11 @@ wss.on("connection", (ws, req) => {
 
       involentary.session_length = diff;
       involentary.location = req.socket.remoteAddress;
-      involentary.save();
+
+      if(user_data_flag == true){
+        involentary.save();
+      }
+      
 
   });
   // handling client connection error
@@ -87,38 +101,16 @@ wss.on("connection", (ws, req) => {
   }
 });
 
-// HTTP ENDPOINTS
-app.get('/', (req, res) => {
-  res.send('i will kill you')
-  console.log("kill trigerred");
+app.get('/custom', async (req, res) => { //Returns all custom labelled data
+  custom.find().then((result) => res.send(result)).catch((err) => console.log(err))
+  console.log("ALL CUSTOM DATA REQUESTED");
 })
 
-app.get('/hello', async (req, res) => {
-  res.send('Hello World')
+app.get('/userdata', async (req, res) => { //Returns all user data
+  user_data.find().then((result) => res.send(result)).catch((err) => console.log(err))
+  console.log("ALL USER DATA REQUESTED");
 })
 
-app.get('/status', (req, res) => {
+app.get('/status', async (req, res) => {
   res.send('IS ON')
 })
-
-//ADDS REVIEW WITH A GET REQUEST
-
-app.get('/add-review', async (req, res) => {
-  const feedback = new Feedback({
-    song: 'song2',
-    rating: "like"
-  })
-
-  //feedback.save().then((result) => res.send(result)).catch((err) => console.log(err)); //storing
-})
-
-//RETURNS ALL FEEDBACK ENTRIES
-
-app.get('/get-all-review', async (req, res) => {
-  //Feedback.find().then((result) => res.send(result)).catch((err) => console.log(err)) //returning
-
-})
-
-//TODO CREATE CREATE ENDPOINTS
-//TODO CREATE UPDATE ENDPOINTS
-//TODO CREATE DELETE ENDPOINTS
