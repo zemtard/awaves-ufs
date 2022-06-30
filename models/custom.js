@@ -2,16 +2,20 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const feedbackSchema = new Schema({
-    song:{
+    label:{
         type: String,
         required: true
     },
-    rating:{
+    payload:{
+        type: Object,
+        required: true
+    },
+    version:{
         type: String,
         required: true
     }
 }, {timestamps: true})
 
-const Feedback = mongoose.model('Feedback',feedbackSchema)
+const custom = mongoose.model('custom',feedbackSchema)
 
-module.exports = Feedback;
+module.exports = custom;
