@@ -1,6 +1,6 @@
-const custom = require('./custom_data/custom.js')
+const custom = require('./custom.js')
 
-export function create_custom(data){
+module.exports = function create_custom(data){
     const custom_data = new custom({
         label: data.label,
         payload: data.payload,
@@ -8,5 +8,5 @@ export function create_custom(data){
       })
 
       return custom_data;
-      
 }
+

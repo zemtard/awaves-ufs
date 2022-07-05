@@ -10,10 +10,11 @@ const app = express()
 const port = 1337
 const server = require('http').createServer(app)
 const wss = new WebSocket.Server({server});
- const mongoose = require('mongoose')
+const mongoose = require('mongoose')
 
 const user_data = require('./user_data/userdata.js')
-const custom = require('./custom_data/custom.js')
+
+const create_custom = require('./custom_data/index.js')
 
 
 const uri = "mongodb+srv://zemtard:zzz1998@test.aohdt.mongodb.net/feedback?retryWrites=true&w=majority";
@@ -54,26 +55,21 @@ wss.on("connection", (ws, req) => {
       console.log(prettyData)
 
       switch(prettyData.collection){
+        
         case 1 : 
+
         console.log("user 💀 added feedback for collection 1: ");
-
-        const custom_data = new custom({
-          label: prettyData.label,
-          payload: prettyData.payload,
-          version: prettyData.version
-        })
-
+        const custom_data = create_custom(prettyData);
         custom_data.save()
-
         break;
-        case 2 : 
-        console.log("user 💀 added feedback for collection 2: ");
 
+        case 2 : 
+
+        console.log("user 💀 added feedback for collection 2: ");
         involentary.device = prettyData.device;
         involentary.browser = prettyData.browser;
         involentary.OS = prettyData.OS;
         involentary.version = prettyData.version;
-
         user_data_flag = true;
 
         break;
