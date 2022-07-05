@@ -12,9 +12,8 @@ const server = require('http').createServer(app)
 const wss = new WebSocket.Server({server});
 const mongoose = require('mongoose')
 
-const user_data = require('./user_data/userdata.js')
-
-const create_custom = require('./custom_data/index.js')
+const submit_custom = require('./custom_data/index.js')
+const {collect_passed ,submit_userdata} = require('./user_data/index.js')
 
 
 const uri = "mongodb+srv://zemtard:zzz1998@test.aohdt.mongodb.net/feedback?retryWrites=true&w=majority";
@@ -34,17 +33,6 @@ mongoose.connect(uri).then((result) => {
 //WEBSOCKET HANDLING
 wss.on("connection", (ws, req) => {
 
-  user_data_flag = false;
-
-  const involentary = new user_data({
-    session_length: null,
-    location: null,
-    device: null,
-    browser: null,
-    OS: null,
-    version: null
-  })
-
   session_start = new Date(); //getting users start time
   console.log("new client connected 😎 " + req.socket.remoteAddress + " | " + session_start); // user connects, display his ip
   
@@ -55,43 +43,35 @@ wss.on("connection", (ws, req) => {
       console.log(prettyData)
 
       switch(prettyData.collection){
-        
+
         case 1 : 
 
         console.log("user 💀 added feedback for collection 1: ");
-        const custom_data = create_custom(prettyData);
-        custom_data.save()
+        submit_custom(prettyData);
         break;
 
         case 2 : 
 
         console.log("user 💀 added feedback for collection 2: ");
-        involentary.device = prettyData.device;
-        involentary.browser = prettyData.browser;
-        involentary.OS = prettyData.OS;
-        involentary.version = prettyData.version;
-        user_data_flag = true;
-
+        collect_passed(prettyData, req.socket.remoteAddress);
         break;
+
       }
 
   });
   // handling what to do when clients disconnects from server
   ws.on("close",  () => {
       session_end = new Date(); //getting users end time
-      diff = new Date(session_end - session_start) //getting session length
+      //NOT THE END IF PHONE GOES TO SLEEP OR WS JUST DISCONNECTS
+      session_length = new Date(session_end - session_start) //getting session length
+      ip = req.socket.remoteAddress;
       console.log("the client has disconnected 🤮 " + req.socket.remoteAddress + " | " + session_end);
       console.log("===SESSION INFO===")
-      console.log(diff/60000 + " min")
-      console.log(diff/1000 + " sec")
+      console.log(session_length/60000 + " min")
+      console.log(session_length/1000 + " sec")
       console.log("===SESSION INFO end===")
 
-      involentary.session_length = diff;
-      involentary.location = req.socket.remoteAddress;
-
-      if(user_data_flag == true){
-        involentary.save();
-      }
+      submit_userdata(session_length);
       
 
   });

@@ -7,6 +7,6 @@ module.exports = function create_custom(data){
         version: data.version
       })
 
-      return custom_data;
+      custom_data.save();
 }
 

@@ -1,7 +1,7 @@
 const userdata = require('./userdata.js')
 var user_data_flag = false;
 
-const involentary = new user_data({
+const involentary = new userdata({
     session_length: null,
     location: null,
     device: null,
@@ -10,18 +10,21 @@ const involentary = new user_data({
     version: null
   })
 
-module.exports = function create_userdata(data){
-    if(user_data_flag == false){
+exports.collect_passed = function collect_passed(data, ip){
         involentary.device = data.device;
         involentary.browser = data.browser;
         involentary.OS = data.OS;
         involentary.version = data.version;
-    }
+        involentary.location = ip;
+        user_data_flag = true;
 
-    if(user_data_flag == true){
-
-    }
-   
 }
 
-module.exports = involentary;
+exports.submit_userdata = function submit_userdata(length){
+if(user_data_flag == true){
+    involentary.session_length = length;
+    involentary.save();
+}
+}
+
+
