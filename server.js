@@ -7,13 +7,14 @@
 const WebSocket = require('ws');
 const express = require('express')
 const app = express()
-const port = 3000
+const port = 1337
 const server = require('http').createServer(app)
 const wss = new WebSocket.Server({server});
-const mongoose = require('mongoose')
+ const mongoose = require('mongoose')
 
-const user_data = require('./models/userdata.js')
-const custom = require('./models/custom.js')
+const user_data = require('./user_data/userdata.js')
+const custom = require('./custom_data/custom.js')
+
 
 const uri = "mongodb+srv://zemtard:zzz1998@test.aohdt.mongodb.net/feedback?retryWrites=true&w=majority";
 
@@ -27,6 +28,7 @@ mongoose.connect(uri).then((result) => {
   console.log("ERROR CONNECTING")
   console.log(err)
 })
+
 
 //WEBSOCKET HANDLING
 wss.on("connection", (ws, req) => {
@@ -44,8 +46,10 @@ wss.on("connection", (ws, req) => {
 
   session_start = new Date(); //getting users start time
   console.log("new client connected 😎 " + req.socket.remoteAddress + " | " + session_start); // user connects, display his ip
+  
   // sending message
-  ws.on("message", data => { //create endpoints here?
+  ws.on("message", data => {
+    
       prettyData = JSON.parse(data)
       console.log(prettyData)
 
