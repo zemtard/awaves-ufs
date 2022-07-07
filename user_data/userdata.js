@@ -7,7 +7,7 @@ const feedbackSchema = new Schema({
         type: Number,
         required: true
     },
-    location:{
+    ip:{
         type: String,
         required: true
     },
