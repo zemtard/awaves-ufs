@@ -12,16 +12,30 @@ const feedbackSchema = new Schema({
         required: true
     },
     device:{
-        type: String,
-        required: true
+
+        type:{
+            type: String,
+            required: false
+        },
+        model:{
+            type: String,
+            required: false
+        }
+
     },
     browser:{
         type: String,
         required: true
     },
     OS:{
-        type: String,
-        required: true
+        name:{
+            type: String,
+            required: false
+        },
+        version:{
+            type: String,
+            required: false
+        }
     },
     version:{
         type: String,

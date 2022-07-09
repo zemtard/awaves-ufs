@@ -15,7 +15,12 @@ const mongoose = require('mongoose')
 const submit_custom = require('./custom_data/index.js')
 const {submit_userdata2} = require('./user_data/index.js')
 
+const custom = require('./custom_data/custom.js')
+const user_data = require('./user_data/userdata.js')
+
 const {v4: uuid } = require('uuid'); //FOR GENERATING UNIQUE SESSION IDS
+const parser = require('ua-parser-js');
+
 
 var clients = new Map();
 
@@ -36,6 +41,9 @@ mongoose.connect(uri).then((result) => {
 //WEBSOCKET HANDLING
 wss.on("connection", (ws, req) => {
 
+  //console.log(req.headers['user-agent']);
+  user_agent = parser(req.headers['user-agent']);
+  //console.log(user_agent);
   session_id = uuid();
   session_start = new Date(); //getting users start time
 
@@ -47,9 +55,11 @@ wss.on("connection", (ws, req) => {
     session_start, 
     session_end : null,
     session_length : null,
-    device : null,
-    OS : null,
-    browser : null,
+    device_type : user_agent.device.type,
+    device_model : user_agent.device.model ,
+    OS : user_agent.os.name,
+    OS_version : user_agent.os.version,
+    browser : user_agent.browser.name +" "+ user_agent.browser.version,
     version : null
   };
 
@@ -79,9 +89,6 @@ wss.on("connection", (ws, req) => {
 
         console.log("user 💀 added feedback for collection 2: SESSION_ID: " + clients.get(ws).session_id);
         //building client details step 2
-        clients.get(ws).device = prettyData.device
-        clients.get(ws).OS = prettyData.OS
-        clients.get(ws).browser = prettyData.browser
         clients.get(ws).version = prettyData.version
 
         break;
@@ -91,12 +98,13 @@ wss.on("connection", (ws, req) => {
   });
   // handling what to do when clients disconnects from server
   ws.on("close",  () => {
+
       //NOT THE END IF PHONE GOES TO SLEEP OR WS JUST DISCONNECTS
       
       clients.get(ws).session_end = new Date(); //sets specific clients sessions end time
       session_length2 = new Date(clients.get(ws).session_end - clients.get(ws).session_start) //getting session length with in mind of session id
-      //clients details step 3
-      clients.get(ws).session_length = session_length2.getSeconds();
+      //building client details step 3
+      clients.get(ws).session_length = session_length2.getSeconds(); //session length in seconds
 
       console.log("the client has disconnected 🤮 " + clients.get(ws).ip + " SESSION_ID: " + clients.get(ws).session_id);
 
@@ -108,18 +116,35 @@ wss.on("connection", (ws, req) => {
   });
   // handling client connection error
   ws.onerror = function () {
+      //clients.delete(ws) //removes closed session from map on error
       console.err("ERROR")
   }
 });
 
 app.get('/active-sessions', async (req, res) => {
-  res.send('sessions');
+  //res.send(clients.values());
   console.log("ACTIVE SESSIONS REQUESTED ");
 })
 
 app.get('/custom', async (req, res) => { //Returns all custom labelled data
   custom.find().then((result) => res.send(result)).catch((err) => console.log(err))
   console.log("ALL CUSTOM DATA REQUESTED");
+})
+
+app.get('/userdata/version=:ver', async (req, res) => { //Returns all custom labelled data
+  user_data.find({version : req.params.ver}).then((result) => res.send(result)).catch((err) => console.log(err))
+  console.log(req.params.ver +" USER DATA REQUESTED");
+})
+
+app.get('/custom/version=:ver', async (req, res) => { //Returns all custom labelled data
+  custom.find({version : req.params.ver}).then((result) => res.send(result)).catch((err) => console.log(err))
+  console.log(req.params.ver +" CUSTOM DATA REQUESTED");
+})
+
+
+app.get('/custom/label=:var', async (req, res) => { //Returns all custom labelled data
+  custom.find({label : req.params.var}).then((result) => res.send(result)).catch((err) => console.log(err))
+  console.log(req.params.var +" CUSTOM DATA REQUESTED");
 })
 
 app.get('/userdata', async (req, res) => { //Returns all user data

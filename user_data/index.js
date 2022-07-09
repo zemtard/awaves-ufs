@@ -5,12 +5,13 @@ exports.submit_userdata2 = function submit_userdata(metadata){
     var involentary = new userdata({
         session_length: metadata.session_length,
         ip: metadata.ip,
-        device: metadata.device,
+        device : {type: metadata.device_type, model: metadata.device_model},
         browser: metadata.browser,
-        OS: metadata.OS,
+        OS: {name : metadata.OS, version: metadata.OS_version},
         version: metadata.version
       }) 
 
+      console.log(metadata)
     involentary.save();
 }
 
