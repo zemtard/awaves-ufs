@@ -4,10 +4,12 @@
 //TODO SOME FILTERED DATA READINGS
 //TODO CYPRESS TESTING
 
+require('dotenv').config();
+
 const WebSocket = require('ws');
 const express = require('express')
 const app = express()
-const port = 1337
+const port = process.env.PORT
 const server = require('http').createServer(app)
 const wss = new WebSocket.Server({server});
 const mongoose = require('mongoose')
@@ -24,7 +26,7 @@ const parser = require('ua-parser-js');
 
 var clients = new Map();
 
-const uri = "mongodb+srv://zemtard:zzz1998@test.aohdt.mongodb.net/feedback?retryWrites=true&w=majority";
+const uri = process.env.DATABASE_URI;
 
 //CONNECTING DATABASE AND STARTING SERVER IF DATABASE CONNECTION IS SUCCESSful
 mongoose.connect(uri).then((result) => {
@@ -38,14 +40,15 @@ mongoose.connect(uri).then((result) => {
 })
 
 
-//WEBSOCKET HANDLING
-wss.on("connection", (ws, req) => {
+//WEBSOCKET SERVER
+wss.on("connection", (ws, req) => { //WEBSOCKET CLIENT ON CONNECT
 
   //console.log(req.headers['user-agent']);
   user_agent = parser(req.headers['user-agent']);
   //console.log(user_agent);
   session_id = uuid();
   session_start = new Date(); //getting users start time
+  ws.send(session_id);
 
   ip = req.socket.remoteAddress;
 
@@ -72,10 +75,10 @@ wss.on("connection", (ws, req) => {
   console.log('Clients connected: '+ clients.size);
   
   // sending message
-  ws.on("message", data => {
+  ws.on("message", data => { //WEBSOCKET CLIENT ON MESSAGE
     
       prettyData = JSON.parse(data)
-      //console.log(prettyData)
+      console.log(prettyData)
 
       switch(prettyData.collection){
 
@@ -90,21 +93,22 @@ wss.on("connection", (ws, req) => {
         console.log("user 💀 added feedback for collection 2: SESSION_ID: " + clients.get(ws).session_id);
         //building client details step 2
         clients.get(ws).version = prettyData.version
-
         break;
 
       }
 
   });
   // handling what to do when clients disconnects from server
-  ws.on("close",  () => {
+  ws.on("close",  () => { //WS CLIENT ON CLOSE
 
       //NOT THE END IF PHONE GOES TO SLEEP OR WS JUST DISCONNECTS
       
       clients.get(ws).session_end = new Date(); //sets specific clients sessions end time
       session_length2 = new Date(clients.get(ws).session_end - clients.get(ws).session_start) //getting session length with in mind of session id
       //building client details step 3
-      clients.get(ws).session_length = session_length2.getSeconds(); //session length in seconds
+      //clients.set(ws,metadata.session_length = session_length2)
+      //console.log("length: " + getDifferenceInSeconds(clients.get(ws).session_end, clients.get(ws).session_start));
+      clients.get(ws).session_length = getDifferenceInSeconds(clients.get(ws).session_end, clients.get(ws).session_start)//session length in seconds
 
       console.log("the client has disconnected 🤮 " + clients.get(ws).ip + " SESSION_ID: " + clients.get(ws).session_id);
 
@@ -120,6 +124,9 @@ wss.on("connection", (ws, req) => {
       console.err("ERROR")
   }
 });
+
+
+//ENDPOINTS
 
 app.get('/active-sessions', async (req, res) => {
   //res.send(clients.values());
@@ -155,3 +162,9 @@ app.get('/userdata', async (req, res) => { //Returns all user data
 app.get('/status', async (req, res) => {
   res.send('IS ON')
 })
+
+
+function getDifferenceInSeconds(date1, date2) {
+  const diffInMs = Math.abs(date2 - date1);
+  return diffInMs / 1000;
+}
