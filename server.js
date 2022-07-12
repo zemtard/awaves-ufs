@@ -23,7 +23,6 @@ const user_data = require('./user_data/userdata.js')
 const {v4: uuid } = require('uuid'); //FOR GENERATING UNIQUE SESSION IDS
 const parser = require('ua-parser-js');
 
-
 var clients = new Map();
 
 const uri = process.env.DATABASE_URI;
@@ -43,42 +42,57 @@ mongoose.connect(uri).then((result) => {
 //WEBSOCKET SERVER
 wss.on("connection", (ws, req) => { //WEBSOCKET CLIENT ON CONNECT
 
-  //console.log(req.headers['user-agent']);
-  user_agent = parser(req.headers['user-agent']);
-  //console.log(user_agent);
-  session_id = uuid();
-  session_start = new Date(); //getting users start time
-  ws.send(session_id);
+  url = require('url').parse(req.url)
 
-  ip = req.socket.remoteAddress;
+  returnFlag = false;
 
-  //client details step 1
-  metadata = {session_id, 
-    ip, 
-    session_start, 
-    session_end : null,
-    session_length : null,
-    device_type : user_agent.device.type,
-    device_model : user_agent.device.model ,
-    OS : user_agent.os.name,
-    OS_version : user_agent.os.version,
-    browser : user_agent.browser.name +" "+ user_agent.browser.version,
-    version : null
-  };
+  if(url.pathname == "/reconnect"){
+    returnFlag = true;
+  }
 
-  clients.set(ws, metadata);
+  console.log("Return flag: " + returnFlag)
+
+  if(returnFlag  == false){ //check if its a fresh connect
+
+    user_agent = parser(req.headers['user-agent']);
+    //console.log(user_agent);
+    session_id = uuid();
+    session_start = new Date(); //getting users start time
+    ws.send(session_id);
   
-  //console.log(clients.values());
-
-  console.log("new client connected 😎 " + ip); // user connects, display his ip
-
-  console.log('Clients connected: '+ clients.size);
+    ip = req.socket.remoteAddress;
   
+    //client details step 1
+    metadata = {session_id, 
+      ip, 
+      session_start, 
+      session_end : null,
+      session_length : null,
+      device_type : user_agent.device.type,
+      device_model : user_agent.device.model ,
+      OS : user_agent.os.name,
+      OS_version : user_agent.os.version,
+      browser : user_agent.browser.name +" "+ user_agent.browser.version,
+      version : null,
+      last_disconnect_time: null,
+      disconnect_flag: false,
+    };
+  
+    clients.set(ws, metadata);
+    
+    //console.log(clients.values());
+    
+    console.log("new client connected 😎 " + ip + " ID: " + clients.get(ws).session_id); // user connects, display his ip
+  
+    console.log('Clients connected: '+ clients.size);
+  }else{
+    console.log("Client reconnecting");
+  }
+
   // sending message
   ws.on("message", data => { //WEBSOCKET CLIENT ON MESSAGE
     
       prettyData = JSON.parse(data)
-      console.log(prettyData)
 
       switch(prettyData.collection){
 
@@ -95,6 +109,27 @@ wss.on("connection", (ws, req) => { //WEBSOCKET CLIENT ON CONNECT
         clients.get(ws).version = prettyData.version
         break;
 
+        case "reconnect" :
+
+        console.log("user reconnected to session: " + prettyData.session_id);
+        //console.log( clients.has(ws, metadata.session_id == prettyData.session_id));
+        // if(clients.has( metadata.session_id == prettyData.session_id)){
+        //   clients.get(ws).disconnect_flag = false;
+        // }
+
+        //TODO FIND OLD CONNECTION AND CHANGE DISCONNECT FLAG FOR IT TO FALSE
+        //console.log(clients.get(metadata.session_id == prettyData.session_id));
+        //clients.get(metadata.session_id == prettyData.session_id).key = ws;
+        //vals = clients.values();
+        //console.log(vals.session_id.includes(prettyData.session_id));
+        //clients.get(clients.get() == prettyData.session_id).disconnect_flag = false;
+        reconnecting_client_old = getByValue(clients,prettyData.session_id);
+        clients.set(ws, clients.get(reconnecting_client_old))
+        clients.delete(reconnecting_client_old);
+        clients.get(ws).disconnect_flag = false;
+        
+        break;
+
       }
 
   });
@@ -103,18 +138,19 @@ wss.on("connection", (ws, req) => { //WEBSOCKET CLIENT ON CONNECT
 
       //NOT THE END IF PHONE GOES TO SLEEP OR WS JUST DISCONNECTS
       
-      clients.get(ws).session_end = new Date(); //sets specific clients sessions end time
-      session_length2 = new Date(clients.get(ws).session_end - clients.get(ws).session_start) //getting session length with in mind of session id
+      //clients.get(ws).session_end = new Date();
+      clients.get(ws).last_disconnect_time = new Date(); //sets specific clients sessions end time
+      //session_length2 = new Date(clients.get(ws).session_end - clients.get(ws).session_start) //getting session length with in mind of session id
       //building client details step 3
-      //clients.set(ws,metadata.session_length = session_length2)
-      //console.log("length: " + getDifferenceInSeconds(clients.get(ws).session_end, clients.get(ws).session_start));
-      clients.get(ws).session_length = getDifferenceInSeconds(clients.get(ws).session_end, clients.get(ws).session_start)//session length in seconds
+      //clients.get(ws).session_length = getDifferenceInSeconds(clients.get(ws).session_end, clients.get(ws).session_start)//session length in seconds
 
       console.log("the client has disconnected 🤮 " + clients.get(ws).ip + " SESSION_ID: " + clients.get(ws).session_id);
 
-      submit_userdata2(clients.get(ws)); // submits user detail data on clients exit
+      clients.get(ws).disconnect_flag = true;
 
-      clients.delete(ws) //removes closed session from map
+      //submit_userdata2(clients.get(ws)); // submits user detail data on clients exit
+
+      //clients.delete(ws) //removes closed session from map
       console.log('Clients connected: '+ clients.size);
 
   });
@@ -167,4 +203,31 @@ app.get('/status', async (req, res) => {
 function getDifferenceInSeconds(date1, date2) {
   const diffInMs = Math.abs(date2 - date1);
   return diffInMs / 1000;
+}
+
+
+setInterval(function() { //Watching for 
+  clients.forEach((value, key) => {
+    //console.log(value, key);
+    if(value.disconnect_flag == true){
+      length_temp = getDifferenceInSeconds(value.last_disconnect_time, new Date());
+      console.log("disconnected asshole found ID: " + value.session_id + " DCd for: " + length_temp);
+
+      if(length_temp > 60*0.5){ //last check to ensure client has really disconnected
+        clients.get(key).session_end = value.last_disconnect_time; 
+        clients.get(key).session_length = getDifferenceInSeconds(value.session_end, value.session_start)//session length in seconds
+        submit_userdata2(value);
+         clients.delete(key);
+         console.log("deleting inactive client " + value.session_id )
+      }
+    }
+  })
+}, 1000);
+
+
+function getByValue(map, searchValue) {
+  for (let [key, value] of map.entries()) {
+    if (value.session_id === searchValue)
+      return key;
+  }
 }
