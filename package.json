@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "colors": "^1.4.0",
     "dotenv": "^16.0.1",
     "express": "^4.17.3",
     "mongodb": "^4.5.0",

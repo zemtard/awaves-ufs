@@ -23,21 +23,25 @@ const user_data = require("./user_data/userdata.js");
 const { v4: uuid } = require("uuid"); //FOR GENERATING UNIQUE SESSION IDS
 const parser = require("ua-parser-js");
 
+const colors = require("colors");
+
 var clients = new Map();
 
 const uri = process.env.DATABASE_URI;
+
+console.log("==STRATING FEEDBACK SYSTEM==".brightBlue);
 
 //CONNECTING DATABASE AND STARTING SERVER IF DATABASE CONNECTION IS SUCCESSful
 mongoose
   .connect(uri)
   .then((result) => {
-    console.log("DB CONNECTED");
+    console.log("DB CONNECTED".green);
     server.listen(port, () => {
-      console.log(`APP LISTENING ON PORT: ${port}`);
+      console.log(`APP LISTENING ON PORT: ${port}`.green);
     });
   })
   .catch((err) => {
-    console.log("ERROR CONNECTING");
+    console.log("ERROR CONNECTING".red);
     console.log(err);
   });
 
@@ -45,14 +49,14 @@ mongoose
 wss.on("connection", (ws, req) => {
   //WEBSOCKET CLIENT ON CONNECT
 
-  url = require("url").parse(req.url);
-  const urlParams = new URLSearchParams(url.query);
+  let url = require("url").parse(req.url); //getting connect request url
+  let urlParams = new URLSearchParams(url.query);
 
-  session_id_temp = urlParams.get("id");
+  let session_id_temp = urlParams.get("id");
 
   console.log(urlParams.get("id"));
 
-  returnFlag = false;
+  let returnFlag = false;
 
   if (session_id_temp != null) {
     returnFlag = true;
@@ -62,33 +66,33 @@ wss.on("connection", (ws, req) => {
 
   if (returnFlag == true) {
     //if its a reconnect case check if theres a matching session id
-    console.log("Client reconnecting session ID: " + session_id_temp);
-    reconnecting_client_old = getByValue(clients, session_id_temp);
+    console.log("Client reconnecting SESSION_ID: " + session_id_temp + "".green);
+    let reconnecting_client_old = getByValue(clients, session_id_temp);
     if (reconnecting_client_old != undefined || reconnecting_client_old != null) {
       clients.set(ws, clients.get(reconnecting_client_old));
       clients.delete(reconnecting_client_old);
       clients.get(ws).disconnect_flag = false;
-      console.log("client sucesfully reconnected :)");
+      console.log("client sucesfully reconnected :)".green);
     } else {
       //if cannot find a session, reset flag and add user to new session
       returnFlag = false;
-      console.log("Client tried reconnecting but session ID: " + session_id_temp + " has expired");
+      console.log("client tried reconnecting but SESSION_ID: " + session_id_temp + " has expired".red);
     }
   }
 
   if (returnFlag == false) {
     //check if its a fresh connect
 
-    user_agent = parser(req.headers["user-agent"]);
+    let user_agent = parser(req.headers["user-agent"]);
     //console.log(user_agent);
-    session_id = uuid();
-    session_start = new Date(); //getting users start time
+    let session_id = uuid();
+    let session_start = new Date(); //getting users start time
     ws.send(session_id);
 
-    ip = req.socket.remoteAddress;
+    let ip = req.socket.remoteAddress;
 
     //client details step 1
-    metadata = {
+    let metadata = {
       session_id,
       ip,
       session_start,
@@ -108,7 +112,7 @@ wss.on("connection", (ws, req) => {
 
     //console.log(clients.values());
 
-    console.log("new client connected 😎 " + ip + " ID: " + clients.get(ws).session_id); // user connects, display his ip
+    console.log("new client connected 😎: " + ip + "SESSION_ID: " + clients.get(ws).session_id); // user connects, display his ip
 
     console.log("Clients connected: " + clients.size);
   }
@@ -117,16 +121,17 @@ wss.on("connection", (ws, req) => {
   ws.on("message", (data) => {
     //WEBSOCKET CLIENT ON MESSAGE
 
-    prettyData = JSON.parse(data);
+    let prettyData = JSON.parse(data);
+    console.log(prettyData); // printing all incoming messages
 
     switch (prettyData.collection) {
       case 1:
-        console.log("user 💀 added feedback for collection 1: SESSION_ID: " + clients.get(ws).session_id);
+        console.log("feedback added for collection 1 by 💀 SESSION_ID: " + clients.get(ws).session_id);
         submit_custom(prettyData);
         break;
 
       case 2:
-        console.log("user 💀 added feedback for collection 2: SESSION_ID: " + clients.get(ws).session_id);
+        console.log("feedback added for collection 2 by 💀 SESSION_ID: " + clients.get(ws).session_id);
         //building client details step 2
         clients.get(ws).version = prettyData.version;
         break;
@@ -137,7 +142,7 @@ wss.on("connection", (ws, req) => {
     //WS CLIENT ON CLOSE
     clients.get(ws).last_disconnect_time = new Date(); //sets specific clients sessions end time
 
-    console.log("the client has disconnected 🤮 " + clients.get(ws).ip + " SESSION_ID: " + clients.get(ws).session_id);
+    console.log("client disconnected 🤮 " + clients.get(ws).ip + " SESSION_ID: " + clients.get(ws).session_id);
 
     clients.get(ws).disconnect_flag = true;
 
@@ -211,12 +216,12 @@ function getDifferenceInSeconds(date1, date2) {
 }
 
 setInterval(function () {
-  //Watching for
+  //Watching for how long client has been disconnected
   clients.forEach((value, key) => {
     //console.log(value, key);
     if (value.disconnect_flag == true) {
-      length_temp = getDifferenceInSeconds(value.last_disconnect_time, new Date());
-      console.log("disconnected client found ID: " + value.session_id + " | DISCONNECTED for: " + length_temp + "sec");
+      let length_temp = getDifferenceInSeconds(value.last_disconnect_time, new Date());
+      console.log("SESSION_ID: " + value.session_id + " | DISCONNECTED for: " + length_temp + " sec");
 
       if (length_temp > +process.env.CLIENT_TIMEOUT_SECONDS) {
         //last check to ensure client has really disconnected
@@ -224,7 +229,7 @@ setInterval(function () {
         clients.get(key).session_length = getDifferenceInSeconds(value.session_end, value.session_start); //session length in seconds
         submit_userdata2(value);
         clients.delete(key);
-        console.log("deleting inactive client " + value.session_id);
+        console.log("deleting SESSION_ID: " + value.session_id + " due to inactivity");
       }
     }
   });
