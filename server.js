@@ -1,8 +1,17 @@
-//TODO DOCKERIZE THIS APP                      0
+//TODO DOCKERIZE THIS APP                      100
 //TODO TEST APP try breaking                   70-80
 //TODO GRAPHQL FOR AUTOMATIC ENDPOINTS         0
 //TODO SOME FILTERED DATA READINGS             50
 //TODO CYPRESS TESTING                         0
+
+//TODO i think i important
+//(1) SOME CASES WHERE CANNOT SUBMIT USER DATA DUE TO SERVER NOT RECEIVING VERSION FROM FRONTEND
+// can handle this either in front-end, back-end or both
+// try mongoosee error catching <- ez solution
+//(2) ADD MINIMUM SESSION TO SAVE? (IF LESS HAN 5 MIN SESSION TIME DONT EVEN SAVE IT TO DATABASE)
+//(3) NEW MODULES: (1) WEBSOCKET, (2) CLIENTS, (3) SESSION MANAGER
+//(4) 2 VARIABLE ENDPOINTS
+//TODO
 
 require("dotenv").config();
 
@@ -228,6 +237,7 @@ setInterval(function () {
         clients.get(key).session_end = value.last_disconnect_time;
         clients.get(key).session_length = getDifferenceInSeconds(value.session_end, value.session_start); //session length in seconds
         submit_userdata2(value);
+
         clients.delete(key);
         console.log("deleting SESSION_ID: " + value.session_id + " due to inactivity");
       }
