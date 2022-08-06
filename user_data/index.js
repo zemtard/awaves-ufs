@@ -1,6 +1,9 @@
 const userdata = require("./userdata.js");
 
 exports.submit_userdata2 = function submit_userdata(metadata) {
+  metadata.session_end = metadata.last_disconnect_time;
+  metadata.session_length = getDifferenceInSeconds(metadata.session_end, metadata.session_start);
+
   var involentary = new userdata({
     session_length: metadata.session_length,
     ip: metadata.ip,
@@ -17,3 +20,8 @@ exports.submit_userdata2 = function submit_userdata(metadata) {
     console.log("USER ".red + involentary.ip.red + " WONT BE SAVED".red);
   }
 };
+
+function getDifferenceInSeconds(date1, date2) {
+  const diffInMs = Math.abs(date2 - date1);
+  return diffInMs / 1000;
+}

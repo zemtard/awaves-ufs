@@ -11,6 +11,7 @@
 //(2) ADD MINIMUM SESSION TO SAVE? (IF LESS HAN 5 MIN SESSION TIME DONT EVEN SAVE IT TO DATABASE)
 //(3) NEW MODULES: (1) WEBSOCKET, (2) CLIENTS, (3) SESSION MANAGER
 //(4) 2 VARIABLE ENDPOINTS
+//(5) IMMIDIATE DISCONNECT WITHOUT WAITING FOR TIMEOUT (probably send disconnect message before on front-end)
 //TODO
 
 require("dotenv").config();
@@ -115,6 +116,7 @@ wss.on("connection", (ws, req) => {
       version: null,
       last_disconnect_time: null,
       disconnect_flag: false,
+      self_close: false,
     };
 
     clients.set(ws, metadata);
@@ -134,15 +136,20 @@ wss.on("connection", (ws, req) => {
     console.log(prettyData); // printing all incoming messages
 
     switch (prettyData.collection) {
-      case 1:
+      case 1: //CUSTOM LABELLED DATA CASE
         console.log("feedback added for collection 1 by 💀 SESSION_ID: " + clients.get(ws).session_id);
         submit_custom(prettyData);
         break;
 
-      case 2:
+      case 2: //USER DATA CASE
         console.log("feedback added for collection 2 by 💀 SESSION_ID: " + clients.get(ws).session_id);
         //building client details step 2
         clients.get(ws).version = prettyData.version;
+        break;
+
+      case 3: //100% APP CLOSED CASE
+        console.log("USER DISCONNECTING");
+        clients.get(ws).self_close = true; //sets self close to true and the server wont wait for the user to timeout
         break;
     }
   });
@@ -154,6 +161,11 @@ wss.on("connection", (ws, req) => {
     console.log("client disconnected 🤮 " + clients.get(ws).ip + " SESSION_ID: " + clients.get(ws).session_id);
 
     clients.get(ws).disconnect_flag = true;
+
+    if (clients.get(ws).self_close == true) {
+      submit_userdata2(clients.get(ws));
+      clients.delete(ws);
+    }
 
     console.log("Clients connected: " + clients.size);
   });
@@ -234,8 +246,6 @@ setInterval(function () {
 
       if (length_temp > +process.env.CLIENT_TIMEOUT_SECONDS) {
         //last check to ensure client has really disconnected
-        clients.get(key).session_end = value.last_disconnect_time;
-        clients.get(key).session_length = getDifferenceInSeconds(value.session_end, value.session_start); //session length in seconds
         submit_userdata2(value);
 
         clients.delete(key);
