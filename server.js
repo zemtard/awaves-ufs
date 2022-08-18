@@ -1,18 +1,3 @@
-//TODO TEST APP try breaking                   70-80
-//TODO GRAPHQL FOR AUTOMATIC ENDPOINTS         0
-//TODO SOME FILTERED DATA READINGS             50
-//TODO CYPRESS TESTING                         0
-
-//TODO i think i important
-//(1) SOME CASES WHERE CANNOT SUBMIT USER DATA DUE TO SERVER NOT RECEIVING VERSION FROM FRONTEND
-// can handle this either in front-end, back-end or both
-// try mongoosee error catching <- ez solution
-//(2) ADD MINIMUM SESSION TO SAVE? (IF LESS HAN 5 MIN SESSION TIME DONT EVEN SAVE IT TO DATABASE)
-//(3) NEW MODULES: (1) WEBSOCKET, (2) CLIENTS, (3) SESSION MANAGER
-//(4) 2 VARIABLE ENDPOINTS
-//(5) IMMIDIATE DISCONNECT WITHOUT WAITING FOR TIMEOUT (probably send disconnect message before on front-end) //TODO 80% frontend fix needed
-//TODO
-
 require("dotenv").config();
 
 const WebSocket = require("ws");
@@ -41,16 +26,17 @@ const uri = process.env.DATABASE_URI;
 console.log("==STRATING FEEDBACK SYSTEM==".brightBlue);
 
 //CONNECTING DATABASE AND STARTING SERVER IF DATABASE CONNECTION IS SUCCESSful
+
 mongoose
   .connect(uri)
   .then((result) => {
-    console.log("DB CONNECTED".green);
+    console.log(`DB CONNECTED`.green);
     server.listen(port, () => {
       console.log(`APP LISTENING ON PORT: ${port}`.green);
     });
   })
   .catch((err) => {
-    console.log("ERROR CONNECTING".red);
+    console.log(`ERROR CONNECTING`.red);
     console.log(err);
   });
 
@@ -67,29 +53,29 @@ wss.on("connection", (ws, req) => {
 
   let returnFlag = false;
 
-  if (session_id_temp != null) {
+  if (session_id_temp !== null) {
     returnFlag = true;
   }
 
-  console.log("Return flag: " + returnFlag);
+  console.log(`Return flag: ${returnFlag}`);
 
-  if (returnFlag == true) {
+  if (returnFlag) {
     //if its a reconnect case check if theres a matching session id
-    console.log("Client reconnecting SESSION_ID: " + session_id_temp + "".green);
+    console.log(`[EVENT] [RECONNECT_ATTEMPT] SESSION_ID=${session_id_temp} `.green);
     let reconnecting_client_old = getByValue(clients, session_id_temp);
     if (reconnecting_client_old != undefined || reconnecting_client_old != null) {
       clients.set(ws, clients.get(reconnecting_client_old));
       clients.delete(reconnecting_client_old);
       clients.get(ws).disconnect_flag = false;
-      console.log("client sucesfully reconnected :)".green);
+      console.log(`[EVENT] [RECONNECT_ATTEMPT_SUCCESS] SESSION_ID=${session_id_temp}`.green);
     } else {
       //if cannot find a session, reset flag and add user to new session
       returnFlag = false;
-      console.log("client tried reconnecting but SESSION_ID: " + session_id_temp + " has expired".red);
+      console.log(`[EVENT] [RECONNECT_ATTEMPT_FAILED] SESSION_ID=${session_id_temp}`.red);
     }
   }
 
-  if (returnFlag == false) {
+  if (!returnFlag) {
     //check if its a fresh connect
 
     let user_agent = parser(req.headers["user-agent"]);
@@ -110,7 +96,7 @@ wss.on("connection", (ws, req) => {
       device_model: user_agent.device.model,
       OS: user_agent.os.name,
       OS_version: user_agent.os.version,
-      browser: user_agent.browser.name + " " + user_agent.browser.version,
+      browser: `${user_agent.browser.name} ${user_agent.browser.version}`,
       version: null,
       last_disconnect_time: null,
       disconnect_flag: false,
@@ -119,9 +105,9 @@ wss.on("connection", (ws, req) => {
 
     clients.set(ws, metadata);
 
-    console.log("new client connected 😎: " + ip + "SESSION_ID: " + clients.get(ws).session_id); // user connects, display his ip
+    console.log(`[EVENT] [NEW_CONNECTION] ip=${ip}, SESSION_ID=${clients.get(ws).session_id}`); // user connects, display his ip
 
-    console.log("Clients connected: " + clients.size);
+    //console.log(`Clients connected: ${clients.size}`);
   }
 
   // sending message
@@ -138,18 +124,18 @@ wss.on("connection", (ws, req) => {
     if (prettyData !== null) {
       switch (prettyData.collection) {
         case 1: //CUSTOM LABELLED DATA CASE
-          console.log("feedback added for collection 1 by 💀 SESSION_ID: " + clients.get(ws).session_id);
+          console.log(`[DATA] [CUSTOM] SESSION_ID=${clients.get(ws).session_id}`);
           submit_custom(prettyData);
           break;
 
         case 2: //USER DATA CASE
-          console.log("feedback added for collection 2 by 💀 SESSION_ID: " + clients.get(ws).session_id);
+          console.log(`[DATA] [USER] SESSION_ID=${clients.get(ws).session_id}`);
           //building client details step 2
           clients.get(ws).version = prettyData.version;
           break;
 
         case 3: //100% APP CLOSED CASE
-          console.log("USER DISCONNECTING");
+          console.log(`USER DISCONNECTING`);
           clients.get(ws).self_close = true; //sets self close to true and the server wont wait for the user to timeout
           break;
       }
@@ -160,20 +146,20 @@ wss.on("connection", (ws, req) => {
     //WS CLIENT ON CLOSE
     clients.get(ws).last_disconnect_time = new Date(); //sets specific clients sessions end time
 
-    console.log("client disconnected 🤮 " + clients.get(ws).ip + " SESSION_ID: " + clients.get(ws).session_id);
+    console.log(`[EVENT] [CLIENT_LOST] ip=${clients.get(ws).ip}, SESSION_ID=${clients.get(ws).session_id}`);
 
     clients.get(ws).disconnect_flag = true;
 
-    if (clients.get(ws).self_close == true) {
+    if (clients.get(ws).self_close) {
       submit_userdata2(clients.get(ws));
       clients.delete(ws);
     }
 
-    console.log("Clients connected: " + clients.size);
+    //console.log(`Clients connected: ${clients.size}`);
   });
   // handling client connection error
   ws.onerror = function () {
-    console.err("ERROR");
+    console.err(`ERROR`);
   };
 });
 
@@ -181,7 +167,7 @@ wss.on("connection", (ws, req) => {
 
 app.get("/active-sessions", async (req, res) => {
   //res.send(clients.values());
-  console.log("ACTIVE SESSIONS REQUESTED ");
+  console.log(`ACTIVE SESSIONS REQUESTED`);
 });
 
 app.get("/custom", async (req, res) => {
@@ -190,7 +176,7 @@ app.get("/custom", async (req, res) => {
     .find()
     .then((result) => res.send(result))
     .catch((err) => console.log(err));
-  console.log("ALL CUSTOM DATA REQUESTED");
+  console.log(`ALL CUSTOM DATA REQUESTED`);
 });
 
 app.get("/userdata/version=:ver", async (req, res) => {
@@ -199,7 +185,7 @@ app.get("/userdata/version=:ver", async (req, res) => {
     .find({ version: req.params.ver })
     .then((result) => res.send(result))
     .catch((err) => console.log(err));
-  console.log(req.params.ver + " USER DATA REQUESTED");
+  console.log(`${req.params.ver} USER DATA REQUESTED`);
 });
 
 app.get("/custom/version=:ver", async (req, res) => {
@@ -208,7 +194,7 @@ app.get("/custom/version=:ver", async (req, res) => {
     .find({ version: req.params.ver })
     .then((result) => res.send(result))
     .catch((err) => console.log(err));
-  console.log(req.params.ver + " CUSTOM DATA REQUESTED");
+  console.log(`${req.params.ver} CUSTOM DATA REQUESTED`);
 });
 
 app.get("/custom/label=:var", async (req, res) => {
@@ -217,7 +203,7 @@ app.get("/custom/label=:var", async (req, res) => {
     .find({ label: req.params.var })
     .then((result) => res.send(result))
     .catch((err) => console.log(err));
-  console.log(req.params.var + " CUSTOM DATA REQUESTED");
+  console.log(`${req.params.var} CUSTOM DATA REQUESTED`);
 });
 
 app.get("/userdata", async (req, res) => {
@@ -233,6 +219,12 @@ app.get("/status", async (req, res) => {
   res.send("IS ON");
 });
 
+/**
+ *
+ * @param {*} date1
+ * @param {*} date2
+ * @returns
+ */
 function getDifferenceInSeconds(date1, date2) {
   const diffInMs = Math.abs(date2 - date1);
   return diffInMs / 1000;
@@ -242,19 +234,26 @@ setInterval(function () {
   //Watching for how long client has been disconnected
   clients.forEach((value, key) => {
     //console.log(value, key);
-    if (value.disconnect_flag == true) {
+    if (value.disconnect_flag) {
       let length_temp = getDifferenceInSeconds(value.last_disconnect_time, new Date());
-      console.log("SESSION_ID: " + value.session_id + " | DISCONNECTED for: " + length_temp + " sec");
+      console.log(`[EVENT] [CLIENT_LOST] SESSION_ID=${value.session_id}, DISCONNECTED_SECONDS=${length_temp}`);
 
       if (length_temp > +process.env.CLIENT_TIMEOUT_SECONDS) {
         //last check to ensure client has really disconnected
         submit_userdata2(value);
         clients.delete(key);
-        console.log("deleting SESSION_ID: " + value.session_id + " due to inactivity");
+        console.log(`[EVENT] [REMOVE_INACTIVE_CLIENT] SESSION_ID=${value.session_id}`);
       }
     }
   });
 }, 1000);
+
+/**
+ *
+ * @param {*} map
+ * @param {*} searchValue
+ * @returns
+ */
 
 function getByValue(map, searchValue) {
   for (let [key, value] of map.entries()) {

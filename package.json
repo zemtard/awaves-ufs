@@ -7,6 +7,7 @@
     "colors": "^1.4.0",
     "dotenv": "^16.0.1",
     "express": "^4.17.3",
+    "jsdoc": "^3.6.11",
     "mongodb": "^4.5.0",
     "mongoose": "^6.3.0",
     "ua-parser-js": "^1.0.2",
