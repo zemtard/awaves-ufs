@@ -1,4 +1,3 @@
-//TODO DOCKERIZE THIS APP                      100
 //TODO TEST APP try breaking                   70-80
 //TODO GRAPHQL FOR AUTOMATIC ENDPOINTS         0
 //TODO SOME FILTERED DATA READINGS             50
@@ -11,7 +10,7 @@
 //(2) ADD MINIMUM SESSION TO SAVE? (IF LESS HAN 5 MIN SESSION TIME DONT EVEN SAVE IT TO DATABASE)
 //(3) NEW MODULES: (1) WEBSOCKET, (2) CLIENTS, (3) SESSION MANAGER
 //(4) 2 VARIABLE ENDPOINTS
-//(5) IMMIDIATE DISCONNECT WITHOUT WAITING FOR TIMEOUT (probably send disconnect message before on front-end)
+//(5) IMMIDIATE DISCONNECT WITHOUT WAITING FOR TIMEOUT (probably send disconnect message before on front-end) //TODO 80% frontend fix needed
 //TODO
 
 require("dotenv").config();
@@ -94,7 +93,6 @@ wss.on("connection", (ws, req) => {
     //check if its a fresh connect
 
     let user_agent = parser(req.headers["user-agent"]);
-    //console.log(user_agent);
     let session_id = uuid();
     let session_start = new Date(); //getting users start time
     ws.send(session_id);
@@ -121,8 +119,6 @@ wss.on("connection", (ws, req) => {
 
     clients.set(ws, metadata);
 
-    //console.log(clients.values());
-
     console.log("new client connected 😎: " + ip + "SESSION_ID: " + clients.get(ws).session_id); // user connects, display his ip
 
     console.log("Clients connected: " + clients.size);
@@ -131,26 +127,32 @@ wss.on("connection", (ws, req) => {
   // sending message
   ws.on("message", (data) => {
     //WEBSOCKET CLIENT ON MESSAGE
+    let prettyData = null;
+    try {
+      prettyData = JSON.parse(data);
+      console.log(prettyData); // printing all incoming messages
+    } catch (error) {
+      prettyData = null;
+    }
 
-    let prettyData = JSON.parse(data);
-    console.log(prettyData); // printing all incoming messages
+    if (prettyData !== null) {
+      switch (prettyData.collection) {
+        case 1: //CUSTOM LABELLED DATA CASE
+          console.log("feedback added for collection 1 by 💀 SESSION_ID: " + clients.get(ws).session_id);
+          submit_custom(prettyData);
+          break;
 
-    switch (prettyData.collection) {
-      case 1: //CUSTOM LABELLED DATA CASE
-        console.log("feedback added for collection 1 by 💀 SESSION_ID: " + clients.get(ws).session_id);
-        submit_custom(prettyData);
-        break;
+        case 2: //USER DATA CASE
+          console.log("feedback added for collection 2 by 💀 SESSION_ID: " + clients.get(ws).session_id);
+          //building client details step 2
+          clients.get(ws).version = prettyData.version;
+          break;
 
-      case 2: //USER DATA CASE
-        console.log("feedback added for collection 2 by 💀 SESSION_ID: " + clients.get(ws).session_id);
-        //building client details step 2
-        clients.get(ws).version = prettyData.version;
-        break;
-
-      case 3: //100% APP CLOSED CASE
-        console.log("USER DISCONNECTING");
-        clients.get(ws).self_close = true; //sets self close to true and the server wont wait for the user to timeout
-        break;
+        case 3: //100% APP CLOSED CASE
+          console.log("USER DISCONNECTING");
+          clients.get(ws).self_close = true; //sets self close to true and the server wont wait for the user to timeout
+          break;
+      }
     }
   });
   // handling what to do when clients disconnects from server
@@ -247,7 +249,6 @@ setInterval(function () {
       if (length_temp > +process.env.CLIENT_TIMEOUT_SECONDS) {
         //last check to ensure client has really disconnected
         submit_userdata2(value);
-
         clients.delete(key);
         console.log("deleting SESSION_ID: " + value.session_id + " due to inactivity");
       }
