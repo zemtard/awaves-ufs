@@ -18,4 +18,4 @@ COPY . .
 EXPOSE 8080
 CMD [ "node", "server.js" ]
 
-#docker run -p [REAL PORT]:8080 -d <your username>/node-web-app
+#docker run -p [NEW PORT]:[NEW PORT] -d <your username>/node-web-app

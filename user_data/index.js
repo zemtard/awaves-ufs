@@ -17,7 +17,7 @@ exports.submit_userdata2 = function submit_userdata(metadata) {
   if (involentary.version != null) {
     involentary.save().catch((err) => err);
   } else {
-    console.log("USER ".red + involentary.ip.red + " WONT BE SAVED".red);
+    console.log(`[INFO] [USER_DATA_CANT_SAVE] ip=${involentary.ip}`);
   }
 };
 

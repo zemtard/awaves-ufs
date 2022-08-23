@@ -57,21 +57,19 @@ wss.on("connection", (ws, req) => {
     returnFlag = true;
   }
 
-  console.log(`Return flag: ${returnFlag}`);
-
   if (returnFlag) {
     //if its a reconnect case check if theres a matching session id
-    console.log(`[EVENT] [RECONNECT_ATTEMPT] SESSION_ID=${session_id_temp} `.green);
+    console.log(`[EVENT] [RECONNECT_ATTEMPT] SESSION_ID=${session_id_temp} `);
     let reconnecting_client_old = getByValue(clients, session_id_temp);
     if (reconnecting_client_old != undefined || reconnecting_client_old != null) {
       clients.set(ws, clients.get(reconnecting_client_old));
       clients.delete(reconnecting_client_old);
       clients.get(ws).disconnect_flag = false;
-      console.log(`[EVENT] [RECONNECT_ATTEMPT_SUCCESS] SESSION_ID=${session_id_temp}`.green);
+      console.log(`[EVENT] [RECONNECT_ATTEMPT_SUCCESS] SESSION_ID=${session_id_temp}`);
     } else {
       //if cannot find a session, reset flag and add user to new session
       returnFlag = false;
-      console.log(`[EVENT] [RECONNECT_ATTEMPT_FAILED] SESSION_ID=${session_id_temp}`.red);
+      console.log(`[EVENT] [RECONNECT_ATTEMPT_FAILED] SESSION_ID=${session_id_temp}`);
     }
   }
 
@@ -105,7 +103,9 @@ wss.on("connection", (ws, req) => {
 
     clients.set(ws, metadata);
 
-    console.log(`[EVENT] [NEW_CONNECTION] ip=${ip}, SESSION_ID=${clients.get(ws).session_id}`); // user connects, display his ip
+    console.log(
+      `[EVENT] [NEW_CONNECTION] ip=${ip}, SESSION_ID=${clients.get(ws).session_id}, returnFlag=${returnFlag}`
+    ); // user connects, display his ip
 
     //console.log(`Clients connected: ${clients.size}`);
   }
@@ -115,8 +115,8 @@ wss.on("connection", (ws, req) => {
     //WEBSOCKET CLIENT ON MESSAGE
     let prettyData = null;
     try {
+      console.log(`[DATA] [ALL_INCOMING] data=${data}`); // printing all incoming messages
       prettyData = JSON.parse(data);
-      console.log(prettyData); // printing all incoming messages
     } catch (error) {
       prettyData = null;
     }
@@ -124,18 +124,18 @@ wss.on("connection", (ws, req) => {
     if (prettyData !== null) {
       switch (prettyData.collection) {
         case 1: //CUSTOM LABELLED DATA CASE
-          console.log(`[DATA] [CUSTOM] SESSION_ID=${clients.get(ws).session_id}`);
+          console.log(`[DATA] [SUBMIT_CUSTOM] SESSION_ID=${clients.get(ws).session_id}`);
           submit_custom(prettyData);
           break;
 
         case 2: //USER DATA CASE
-          console.log(`[DATA] [USER] SESSION_ID=${clients.get(ws).session_id}`);
+          console.log(`[DATA] [USER_DATA] SESSION_ID=${clients.get(ws).session_id}`);
           //building client details step 2
           clients.get(ws).version = prettyData.version;
           break;
 
         case 3: //100% APP CLOSED CASE
-          console.log(`USER DISCONNECTING`);
+          //console.log(`USER DISCONNECTING`);
           clients.get(ws).self_close = true; //sets self close to true and the server wont wait for the user to timeout
           break;
       }
@@ -146,7 +146,7 @@ wss.on("connection", (ws, req) => {
     //WS CLIENT ON CLOSE
     clients.get(ws).last_disconnect_time = new Date(); //sets specific clients sessions end time
 
-    console.log(`[EVENT] [CLIENT_LOST] ip=${clients.get(ws).ip}, SESSION_ID=${clients.get(ws).session_id}`);
+    console.log(`[EVENT] [CLIENT_CLOSE] ip=${clients.get(ws).ip}, SESSION_ID=${clients.get(ws).session_id}`);
 
     clients.get(ws).disconnect_flag = true;
 
@@ -225,6 +225,7 @@ app.get("/status", async (req, res) => {
  * @param {*} date2
  * @returns
  */
+
 function getDifferenceInSeconds(date1, date2) {
   const diffInMs = Math.abs(date2 - date1);
   return diffInMs / 1000;
@@ -236,11 +237,12 @@ setInterval(function () {
     //console.log(value, key);
     if (value.disconnect_flag) {
       let length_temp = getDifferenceInSeconds(value.last_disconnect_time, new Date());
-      console.log(`[EVENT] [CLIENT_LOST] SESSION_ID=${value.session_id}, DISCONNECTED_SECONDS=${length_temp}`);
+      //console.log(`[EVENT] [CLIENT_LOST] SESSION_ID=${value.session_id}, DISCONNECTED_SECONDS=${length_temp}`);
 
       if (length_temp > +process.env.CLIENT_TIMEOUT_SECONDS) {
         //last check to ensure client has really disconnected
         submit_userdata2(value);
+        console.log(`[DATA] [SUBMIT_USER_DATA] SESSION_ID=${value.session_id}`);
         clients.delete(key);
         console.log(`[EVENT] [REMOVE_INACTIVE_CLIENT] SESSION_ID=${value.session_id}`);
       }
