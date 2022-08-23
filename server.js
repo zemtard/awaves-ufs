@@ -125,7 +125,7 @@ wss.on("connection", (ws, req) => {
       switch (prettyData.collection) {
         case 1: //CUSTOM LABELLED DATA CASE
           console.log(`[DATA] [SUBMIT_CUSTOM] SESSION_ID=${clients.get(ws).session_id}`);
-          submit_custom(prettyData);
+          submit_custom(prettyData, clients.get(ws).session_id);
           break;
 
         case 2: //USER DATA CASE

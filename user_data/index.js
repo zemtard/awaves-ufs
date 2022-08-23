@@ -5,6 +5,7 @@ exports.submit_userdata2 = function submit_userdata(metadata) {
   metadata.session_length = getDifferenceInSeconds(metadata.session_end, metadata.session_start);
 
   var involentary = new userdata({
+    session_id: metadata.session_id,
     session_length: metadata.session_length,
     ip: metadata.ip,
     device: { type: metadata.device_type, model: metadata.device_model },
