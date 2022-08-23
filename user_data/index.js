@@ -14,7 +14,7 @@ exports.submit_userdata2 = function submit_userdata(metadata) {
     version: metadata.version,
   });
 
-  console.log(metadata);
+  //console.log(metadata);
   if (involentary.version != null) {
     involentary.save().catch((err) => err);
   } else {

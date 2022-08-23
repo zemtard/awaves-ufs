@@ -146,7 +146,7 @@ wss.on("connection", (ws, req) => {
     //WS CLIENT ON CLOSE
     clients.get(ws).last_disconnect_time = new Date(); //sets specific clients sessions end time
 
-    console.log(`[EVENT] [CLIENT_CLOSE] ip=${clients.get(ws).ip}, SESSION_ID=${clients.get(ws).session_id}`);
+    console.log(`[EVENT] [CLIENT_CLOSE] SESSION_ID=${clients.get(ws).session_id}, ip=${clients.get(ws).ip}`);
 
     clients.get(ws).disconnect_flag = true;
 
@@ -242,7 +242,7 @@ setInterval(function () {
       if (length_temp > +process.env.CLIENT_TIMEOUT_SECONDS) {
         //last check to ensure client has really disconnected
         submit_userdata2(value);
-        console.log(`[DATA] [SUBMIT_USER_DATA] SESSION_ID=${value.session_id}`);
+        console.log(`[DATA] [SUBMIT_USER_DATA] SESSION_ID=${value.session_id}, data=${JSON.stringify(value)}`);
         clients.delete(key);
         console.log(`[EVENT] [REMOVE_INACTIVE_CLIENT] SESSION_ID=${value.session_id}`);
       }
