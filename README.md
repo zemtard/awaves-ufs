@@ -34,7 +34,7 @@ A system that collects and stores user feedback and user data from Awaves applic
 
 1. Build docker image
 `docker build -t "name" .`
-2. Run docker image specifying a custom port (default port: 8080).
+2. Run docker image specifying a custom port (default port: 8080)
 `docker run -p [PORT]:[PORT] -d "name"`
 
 ## Usage
