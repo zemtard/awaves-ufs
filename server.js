@@ -8,11 +8,11 @@ const server = require("http").createServer(app);
 const wss = new WebSocket.Server({ server });
 const mongoose = require("mongoose");
 
-const submit_custom = require("./custom_data/index.js");
-const { submit_userdata2 } = require("./user_data/index.js");
+const submit_custom = require("./models/custom_data/index.js");
+const { submit_userdata2 } = require("./models/user_data/index.js");
 
-const custom = require("./custom_data/custom.js");
-const user_data = require("./user_data/userdata.js");
+const custom = require("./models/custom_data/custom.js");
+const user_data = require("./models/user_data/userdata.js");
 
 const { v4: uuid } = require("uuid"); //FOR GENERATING UNIQUE SESSION IDS
 const parser = require("ua-parser-js");
@@ -23,7 +23,7 @@ var clients = new Map();
 
 const uri = process.env.DATABASE_URI;
 
-console.log("==STRATING FEEDBACK SYSTEM==".brightBlue);
+console.log(`==STRATING FEEDBACK SYSTEM==`.brightBlue);
 
 //CONNECTING DATABASE AND STARTING SERVER IF DATABASE CONNECTION IS SUCCESSful
 
@@ -48,8 +48,6 @@ wss.on("connection", (ws, req) => {
   let urlParams = new URLSearchParams(url.query);
 
   let session_id_temp = urlParams.get("id");
-
-  console.log(urlParams.get("id"));
 
   let returnFlag = false;
 
@@ -106,8 +104,6 @@ wss.on("connection", (ws, req) => {
     console.log(
       `[EVENT] [NEW_CONNECTION] ip=${ip}, SESSION_ID=${clients.get(ws).session_id}, returnFlag=${returnFlag}`
     ); // user connects, display his ip
-
-    //console.log(`Clients connected: ${clients.size}`);
   }
 
   // sending message
@@ -124,7 +120,7 @@ wss.on("connection", (ws, req) => {
     if (prettyData !== null) {
       switch (prettyData.collection) {
         case 1: //CUSTOM LABELLED DATA CASE
-          console.log(`[DATA] [SUBMIT_CUSTOM] SESSION_ID=${clients.get(ws).session_id}`);
+          console.log(`[DATA] [SUBMIT_CUSTOM_DATA] SESSION_ID=${clients.get(ws).session_id}`);
           submit_custom(prettyData, clients.get(ws).session_id);
           break;
 
@@ -165,18 +161,13 @@ wss.on("connection", (ws, req) => {
 
 //ENDPOINTS
 
-app.get("/active-sessions", async (req, res) => {
-  //res.send(clients.values());
-  console.log(`ACTIVE SESSIONS REQUESTED`);
-});
-
 app.get("/custom", async (req, res) => {
   //Returns all custom labelled data
   custom
     .find()
     .then((result) => res.send(result))
     .catch((err) => console.log(err));
-  console.log(`ALL CUSTOM DATA REQUESTED`);
+  console.log(`[ENDPOINT] GET ALL CUSTOM DATA`);
 });
 
 app.get("/userdata/version=:ver", async (req, res) => {
@@ -185,7 +176,7 @@ app.get("/userdata/version=:ver", async (req, res) => {
     .find({ version: req.params.ver })
     .then((result) => res.send(result))
     .catch((err) => console.log(err));
-  console.log(`${req.params.ver} USER DATA REQUESTED`);
+  console.log(`[ENDPOINT] USER DATA WITH VERSION: ${req.params.ver} REQUESTED`);
 });
 
 app.get("/custom/version=:ver", async (req, res) => {
@@ -194,7 +185,7 @@ app.get("/custom/version=:ver", async (req, res) => {
     .find({ version: req.params.ver })
     .then((result) => res.send(result))
     .catch((err) => console.log(err));
-  console.log(`${req.params.ver} CUSTOM DATA REQUESTED`);
+  console.log(`[ENDPOINT] CUSTOM DATA WITH VERSION: ${req.params.ver} REQUESTED`);
 });
 
 app.get("/custom/label=:var", async (req, res) => {
@@ -203,7 +194,7 @@ app.get("/custom/label=:var", async (req, res) => {
     .find({ label: req.params.var })
     .then((result) => res.send(result))
     .catch((err) => console.log(err));
-  console.log(`${req.params.var} CUSTOM DATA REQUESTED`);
+  console.log(`[ENDPOINT] CUSTOM DATA WITH LABEL: ${req.params.var} REQUESTED`);
 });
 
 app.get("/userdata", async (req, res) => {
@@ -212,11 +203,12 @@ app.get("/userdata", async (req, res) => {
     .find()
     .then((result) => res.send(result))
     .catch((err) => console.log(err));
-  console.log("ALL USER DATA REQUESTED");
+  console.log("[ENDPOINT] GET ALL USER DATA");
 });
 
 app.get("/status", async (req, res) => {
-  res.send("IS ON");
+  res.send("im online");
+  console.log("[ENDPOINT] GET STATUS");
 });
 
 /**
