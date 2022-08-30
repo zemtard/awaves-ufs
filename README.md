@@ -2,7 +2,23 @@
 
 ## Description
 
-A system that collects and stores user feedback and user data from Awaves applications. 
+A system that collects and stores user feedback and user data from Awaves applications. Created for improving Awaves machine learning algorithms and collecting insights into Awaves user base.
+
+### Created using
+
+- Node.js
+- Express.js
+- Websocket
+- mongodb
+- Docker
+
+### Functionality
+
+- User session data and custom labelled user feedback collection and storage
+- All data trackable by version, date and user session id
+- Customizable launch variables: database URI, client timeout after, port
+- Handling multiple users and apps simultaneously
+- Endpoints for retrieving collected data
 
 ## Installation
 
