@@ -11,15 +11,14 @@ const mongoose = require("mongoose");
 const submit_custom = require("./models/custom_data/index.js");
 const { submit_userdata2 } = require("./models/user_data/index.js");
 
-const custom = require("./models/custom_data/custom.js");
-const user_data = require("./models/user_data/userdata.js");
-
 const { v4: uuid } = require("uuid"); //FOR GENERATING UNIQUE SESSION IDS
 const parser = require("ua-parser-js");
 
 const colors = require("colors");
 
 var clients = new Map();
+
+const endpoints = require("./routes/endpoints");
 
 const uri = process.env.DATABASE_URI;
 
@@ -160,63 +159,7 @@ wss.on("connection", (ws, req) => {
 });
 
 //ENDPOINTS
-
-app.get("/custom", async (req, res) => {
-  //Returns all custom labelled data
-  custom
-    .find()
-    .then((result) => res.send(result))
-    .catch((err) => console.log(err));
-  console.log(`[ENDPOINT] GET ALL CUSTOM DATA`);
-});
-
-app.get("/userdata/version=:ver", async (req, res) => {
-  //Returns all custom labelled data
-  user_data
-    .find({ version: req.params.ver })
-    .then((result) => res.send(result))
-    .catch((err) => console.log(err));
-  console.log(`[ENDPOINT] USER DATA WITH VERSION: ${req.params.ver} REQUESTED`);
-});
-
-app.get("/custom/version=:ver", async (req, res) => {
-  //Returns all custom labelled data
-  custom
-    .find({ version: req.params.ver })
-    .then((result) => res.send(result))
-    .catch((err) => console.log(err));
-  console.log(`[ENDPOINT] CUSTOM DATA WITH VERSION: ${req.params.ver} REQUESTED`);
-});
-
-app.get("/custom/label=:var", async (req, res) => {
-  //Returns all custom labelled data
-  custom
-    .find({ label: req.params.var })
-    .then((result) => res.send(result))
-    .catch((err) => console.log(err));
-  console.log(`[ENDPOINT] CUSTOM DATA WITH LABEL: ${req.params.var} REQUESTED`);
-});
-
-app.get("/userdata", async (req, res) => {
-  //Returns all user data
-  user_data
-    .find()
-    .then((result) => res.send(result))
-    .catch((err) => console.log(err));
-  console.log("[ENDPOINT] GET ALL USER DATA");
-});
-
-app.get("/status", async (req, res) => {
-  res.send("im online");
-  console.log("[ENDPOINT] GET STATUS");
-});
-
-/**
- *
- * @param {*} date1
- * @param {*} date2
- * @returns
- */
+app.use("", endpoints);
 
 function getDifferenceInSeconds(date1, date2) {
   const diffInMs = Math.abs(date2 - date1);
