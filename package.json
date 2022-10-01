@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "colors": "^1.4.0",
+    "cypress": "^10.7.0",
     "dotenv": "^16.0.1",
     "express": "^4.17.3",
     "jsdoc": "^3.6.11",
@@ -18,7 +19,7 @@
     "nodemon": "^2.0.15"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npx cypress open",
     "dev": "nodemon server.js"
   },
   "author": "",

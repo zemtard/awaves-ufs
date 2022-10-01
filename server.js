@@ -1,3 +1,5 @@
+//node_modules\.bin\cypress open to start CYPRESS
+
 require("dotenv").config();
 
 const WebSocket = require("ws");
@@ -7,6 +9,9 @@ const port = process.env.PORT;
 const server = require("http").createServer(app);
 const wss = new WebSocket.Server({ server });
 const mongoose = require("mongoose");
+
+const custom = require("./models/custom_data/custom.js");
+const user_data = require("./models/user_data/userdata.js");
 
 const submit_custom = require("./models/custom_data/index.js");
 const { submit_userdata2 } = require("./models/user_data/index.js");
@@ -130,13 +135,16 @@ wss.on("connection", (ws, req) => {
           break;
 
         case 3: //100% APP CLOSED CASE
-          //console.log(`USER DISCONNECTING`);
           clients.get(ws).self_close = true; //sets self close to true and the server wont wait for the user to timeout
+          break;
+
+        case "test":
+          ws.send("TEST REPLY");
           break;
       }
     }
   });
-  // handling what to do when clients disconnects from server
+  // handling what to do when client disconnects from server
   ws.on("close", () => {
     //WS CLIENT ON CLOSE
     clients.get(ws).last_disconnect_time = new Date(); //sets specific clients sessions end time
@@ -149,8 +157,6 @@ wss.on("connection", (ws, req) => {
       submit_userdata2(clients.get(ws));
       clients.delete(ws);
     }
-
-    //console.log(`Clients connected: ${clients.size}`);
   });
   // handling client connection error
   ws.onerror = function () {
@@ -161,19 +167,67 @@ wss.on("connection", (ws, req) => {
 //ENDPOINTS
 app.use("", endpoints);
 
+// app.get("/custom", async (req, res) => {
+//   //Returns all custom labelled data
+//   custom
+//     .find()
+//     .then((result) => res.send(result))
+//     .catch((err) => console.log(err));
+//   console.log(`[ENDPOINT] GET ALL CUSTOM DATA`);
+// });
+
+// app.get("/userdata/version=:ver", async (req, res) => {
+//   //Returns all custom labelled data
+//   user_data
+//     .find({ version: req.params.ver })
+//     .then((result) => res.send(result))
+//     .catch((err) => console.log(err));
+//   console.log(`[ENDPOINT] USER DATA WITH VERSION: ${req.params.ver} REQUESTED`);
+// });
+
+// app.get("/custom/version=:ver", async (req, res) => {
+//   //Returns all custom labelled data
+//   custom
+//     .find({ version: req.params.ver })
+//     .then((result) => res.send(result))
+//     .catch((err) => console.log(err));
+//   console.log(`[ENDPOINT] CUSTOM DATA WITH VERSION: ${req.params.ver} REQUESTED`);
+// });
+
+// app.get("/custom/label=:var", async (req, res) => {
+//   //Returns all custom labelled data
+//   custom
+//     .find({ label: req.params.var })
+//     .then((result) => res.send(result))
+//     .catch((err) => console.log(err));
+//   console.log(`[ENDPOINT] CUSTOM DATA WITH LABEL: ${req.params.var} REQUESTED`);
+// });
+
+// app.get("/userdata", async (req, res) => {
+//   //Returns all user data
+//   user_data
+//     .find()
+//     .then((result) => res.send(result))
+//     .catch((err) => console.log(err));
+//   console.log("[ENDPOINT] GET ALL USER DATA");
+// });
+
+// app.get("/status", async (req, res) => {
+//   res.send("im online");
+//   console.log("[ENDPOINT] GET STATUS");
+// });
+
 function getDifferenceInSeconds(date1, date2) {
   const diffInMs = Math.abs(date2 - date1);
   return diffInMs / 1000;
 }
 
-setInterval(function () {
+function sessionWatcher() {
+  //CLIENT MANAGER
   //Watching for how long client has been disconnected
   clients.forEach((value, key) => {
-    //console.log(value, key);
     if (value.disconnect_flag) {
       let length_temp = getDifferenceInSeconds(value.last_disconnect_time, new Date());
-      //console.log(`[EVENT] [CLIENT_LOST] SESSION_ID=${value.session_id}, DISCONNECTED_SECONDS=${length_temp}`);
-
       if (length_temp > +process.env.CLIENT_TIMEOUT_SECONDS) {
         //last check to ensure client has really disconnected
         submit_userdata2(value);
@@ -183,14 +237,9 @@ setInterval(function () {
       }
     }
   });
-}, 1000);
+}
 
-/**
- *
- * @param {*} map
- * @param {*} searchValue
- * @returns
- */
+setInterval(sessionWatcher, 1000);
 
 function getByValue(map, searchValue) {
   for (let [key, value] of map.entries()) {
