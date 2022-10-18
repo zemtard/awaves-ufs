@@ -1,5 +1,3 @@
-//node_modules\.bin\cypress open to start CYPRESS
-
 require("dotenv").config();
 
 const WebSocket = require("ws");
@@ -16,7 +14,7 @@ const user_data = require("./models/user_data/userdata.js");
 const submit_custom = require("./models/custom_data/index.js");
 const { submit_userdata2 } = require("./models/user_data/index.js");
 
-const { v4: uuid } = require("uuid"); //FOR GENERATING UNIQUE SESSION IDS
+const { v4: uuid } = require("uuid"); //Generates unique ids
 const parser = require("ua-parser-js");
 
 const colors = require("colors");
@@ -29,7 +27,14 @@ const uri = process.env.DATABASE_URI;
 
 console.log(`==STRATING FEEDBACK SYSTEM==`.brightBlue);
 
-//CONNECTING DATABASE AND STARTING SERVER IF DATABASE CONNECTION IS SUCCESSful
+/*
+============================================================================
+User Feedback System Initialization
+
+The system connects to the MongoDB database using .env variable for URI
+The system opens a http server on port from .env variable for port
+============================================================================
+*/
 
 mongoose
   .connect(uri)
@@ -44,11 +49,22 @@ mongoose
     console.log(err);
   });
 
-//WEBSOCKET SERVER
-wss.on("connection", (ws, req) => {
-  //WEBSOCKET CLIENT ON CONNECT
+/*
+============================================================================
+WebSocket server
+Manages WebSocket clients on their connection, messages and connection termination
 
-  let url = require("url").parse(req.url); //getting connect request url
+Websocket server on connection:
+- Accepts client connections
+- Creates client object associated to 'ws' object and maps it to unique client metadata
+- Handling client reconnecting and returning to original session
+- Gets and stores connected users device information
+============================================================================
+*/
+
+wss.on("connection", (ws, req) => {
+  //Getting URL the client connected with as it may contain his old session-id in cases of reconnect
+  let url = require("url").parse(req.url);
   let urlParams = new URLSearchParams(url.query);
 
   let session_id_temp = urlParams.get("id");
@@ -59,8 +75,8 @@ wss.on("connection", (ws, req) => {
     returnFlag = true;
   }
 
+  //Reconnect case, ensuring the clients map has a matching session id with the client trying to reconnect
   if (returnFlag) {
-    //if its a reconnect case check if theres a matching session id
     console.log(`[EVENT] [RECONNECT_ATTEMPT] SESSION_ID=${session_id_temp} `);
     let reconnecting_client_old = getByValue(clients, session_id_temp);
     if (reconnecting_client_old != undefined || reconnecting_client_old != null) {
@@ -75,9 +91,9 @@ wss.on("connection", (ws, req) => {
     }
   }
 
+  //Fresh connect case, generates session id, clients metadata and sends session id to client for reconnect purposes
+  //Fresh client is added to clients map
   if (!returnFlag) {
-    //check if its a fresh connect
-
     let user_agent = parser(req.headers["user-agent"]);
     let session_id = uuid();
     let session_start = new Date(); //getting users start time
@@ -107,15 +123,24 @@ wss.on("connection", (ws, req) => {
 
     console.log(
       `[EVENT] [NEW_CONNECTION] ip=${ip}, SESSION_ID=${clients.get(ws).session_id}, returnFlag=${returnFlag}`
-    ); // user connects, display his ip
+    );
   }
 
-  // sending message
+  /*
+============================================================================
+Websocket server on message:
+- Accepts messages from clients and ensures incoming data is in JSON format
+- Incoming data is routed using a required field in the received data - collection
+- collection = 1, saves custom labelled data to the database
+- collection = 2, opts-in for user data collection
+- collection = 'test', a route that can be called for testing purposes
+============================================================================
+*/
+
   ws.on("message", (data) => {
-    //WEBSOCKET CLIENT ON MESSAGE
     let prettyData = null;
     try {
-      console.log(`[DATA] [ALL_INCOMING] data=${data}`); // printing all incoming messages
+      console.log(`[DATA] [ALL_INCOMING] data=${data}`);
       prettyData = JSON.parse(data);
     } catch (error) {
       prettyData = null;
@@ -123,14 +148,14 @@ wss.on("connection", (ws, req) => {
 
     if (prettyData !== null) {
       switch (prettyData.collection) {
-        case 1: //CUSTOM LABELLED DATA CASE
+        case 1:
           console.log(`[DATA] [SUBMIT_CUSTOM_DATA] SESSION_ID=${clients.get(ws).session_id}`);
           submit_custom(prettyData, clients.get(ws).session_id);
           break;
 
-        case 2: //USER DATA CASE
+        case 2:
           console.log(`[DATA] [USER_DATA] SESSION_ID=${clients.get(ws).session_id}`);
-          //building client details step 2
+          //opts in for user data collection by receiving version
           clients.get(ws).version = prettyData.version;
           break;
 
@@ -144,9 +169,16 @@ wss.on("connection", (ws, req) => {
       }
     }
   });
-  // handling what to do when client disconnects from server
+
+  /*
+============================================================================
+Websocket server on connection termination:
+- Saves last disconnect time for any client that disconnects
+- Sets a disconnected flag for any disconnected clients
+============================================================================
+*/
+
   ws.on("close", () => {
-    //WS CLIENT ON CLOSE
     clients.get(ws).last_disconnect_time = new Date(); //sets specific clients sessions end time
 
     console.log(`[EVENT] [CLIENT_CLOSE] SESSION_ID=${clients.get(ws).session_id}, ip=${clients.get(ws).ip}`);
@@ -158,73 +190,31 @@ wss.on("connection", (ws, req) => {
       clients.delete(ws);
     }
   });
-  // handling client connection error
   ws.onerror = function () {
     console.err(`ERROR`);
   };
 });
 
-//ENDPOINTS
+/*
+============================================================================
+Endpoints
+- Allows to request data from the database on demand
+- to see implementation go ./routes/endpoints.js
+============================================================================
+*/
+
 app.use("", endpoints);
 
-// app.get("/custom", async (req, res) => {
-//   //Returns all custom labelled data
-//   custom
-//     .find()
-//     .then((result) => res.send(result))
-//     .catch((err) => console.log(err));
-//   console.log(`[ENDPOINT] GET ALL CUSTOM DATA`);
-// });
-
-// app.get("/userdata/version=:ver", async (req, res) => {
-//   //Returns all custom labelled data
-//   user_data
-//     .find({ version: req.params.ver })
-//     .then((result) => res.send(result))
-//     .catch((err) => console.log(err));
-//   console.log(`[ENDPOINT] USER DATA WITH VERSION: ${req.params.ver} REQUESTED`);
-// });
-
-// app.get("/custom/version=:ver", async (req, res) => {
-//   //Returns all custom labelled data
-//   custom
-//     .find({ version: req.params.ver })
-//     .then((result) => res.send(result))
-//     .catch((err) => console.log(err));
-//   console.log(`[ENDPOINT] CUSTOM DATA WITH VERSION: ${req.params.ver} REQUESTED`);
-// });
-
-// app.get("/custom/label=:var", async (req, res) => {
-//   //Returns all custom labelled data
-//   custom
-//     .find({ label: req.params.var })
-//     .then((result) => res.send(result))
-//     .catch((err) => console.log(err));
-//   console.log(`[ENDPOINT] CUSTOM DATA WITH LABEL: ${req.params.var} REQUESTED`);
-// });
-
-// app.get("/userdata", async (req, res) => {
-//   //Returns all user data
-//   user_data
-//     .find()
-//     .then((result) => res.send(result))
-//     .catch((err) => console.log(err));
-//   console.log("[ENDPOINT] GET ALL USER DATA");
-// });
-
-// app.get("/status", async (req, res) => {
-//   res.send("im online");
-//   console.log("[ENDPOINT] GET STATUS");
-// });
-
-function getDifferenceInSeconds(date1, date2) {
-  const diffInMs = Math.abs(date2 - date1);
-  return diffInMs / 1000;
-}
+/*
+============================================================================
+Client session manager:
+- Constantly checks state of active clients (every 1 second)
+- Removes clients that have been disconnected for CLIENT_TIMOUT_SECONDS
+- On client removal submits user data if opted in
+============================================================================
+*/
 
 function sessionWatcher() {
-  //CLIENT MANAGER
-  //Watching for how long client has been disconnected
   clients.forEach((value, key) => {
     if (value.disconnect_flag) {
       let length_temp = getDifferenceInSeconds(value.last_disconnect_time, new Date());
@@ -245,4 +235,9 @@ function getByValue(map, searchValue) {
   for (let [key, value] of map.entries()) {
     if (value.session_id === searchValue) return key;
   }
+}
+
+function getDifferenceInSeconds(date1, date2) {
+  const diffInMs = Math.abs(date2 - date1);
+  return diffInMs / 1000;
 }
